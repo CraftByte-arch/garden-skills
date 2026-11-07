@@ -1,11 +1,11 @@
 ---
 name: gpt-image-2
-description: 面向 GPT Image 2 的图像生成 / 编辑技能。可在 3 种环境下使用：(A) Garden 本地模式，通过 OpenAI 兼容接口直接出图并落盘；(B) Host-Native 模式，把本 Skill 当作提示词工程指引，把渲染好的 prompt 交给宿主 Agent 自带的图像工具出图；(C) Advisor 模式，宿主无任何图像工具时退化为高质量 prompt 顾问。涵盖 18 大类、80+ 个结构化模板，覆盖海报 / UI / 产品 / 信息图 / 学术图 / 技术架构图 / 漫画 / 头像 / 流程板 / 电影分镜 / IP 周边 / 编辑工作流等场景。
+description: 面向 GPT Image 2.5 / 2.6 的图像生成 / 编辑技能。可在 3 种环境下使用：(A) Garden 本地模式，通过 OpenAI 兼容接口直接出图并落盘；(B) Host-Native 模式，把本 Skill 当作提示词工程指引，把渲染好的 prompt 交给宿主 Agent 自带的图像工具出图；(C) Advisor 模式，宿主无任何图像工具时退化为高质量 prompt 顾问。涵盖 18 大类、80+ 个结构化模板，覆盖海报 / UI / 产品 / 信息图 / 学术图 / 技术架构图 / 漫画 / 头像 / 流程板 / 电影分镜 / IP 周边 / 编辑工作流等场景。
 ---
 
-# GPT Image 2
+# GPT Image 2.5 / 2.6
 
-这是一个面向 GPT Image 2 的聚焦型技能，在 3 种运行环境下都能用，但行为差异显著。**第一步必须先确定当前运行模式**。
+这是一个面向 GPT Image 2.5 / 2.6 的聚焦型技能，在 3 种运行环境下都能用，但行为差异显著。**第一步必须先确定当前运行模式**。
 
 它只做两类图像任务：
 
@@ -112,7 +112,13 @@ node skills/gpt-image-2/scripts/check-mode.js --json
 - `ENABLE_GARDEN_IMAGEGEN` — **模式开关**。`1` / `true` / `yes` / `on` 时启用 Mode A；未设置或其它值则进入 Mode B / C。
 - `OPENAI_API_KEY` — Mode A 必需；B / C 不需要。
 - `OPENAI_BASE_URL` — 默认 `https://api.openai.com/v1`，可指向第三方兼容网关。
-- `OPENAI_IMAGE_MODEL` — 默认 `gpt-image-2`，可换成网关支持的型号（如 `gpt-image-1` / `dall-e-3`）。
+- `OPENAI_IMAGE_GENERATION_MODEL` — 文本生图模型；默认 `gpt-image-2.5-flare`。
+- `OPENAI_IMAGE_EDIT_MODEL` — 图像编辑模型；默认 `gpt-image-2.5-sunburst`。
+- `OPENAI_IMAGE_MODEL` — 兼容旧配置的共享覆盖值；操作专用变量优先于它。
+
+模型优先级：CLI `--model` → 操作专用环境变量 → `OPENAI_IMAGE_MODEL` → 操作默认值。内置型号为 `gpt-image-2.5-flare`、`gpt-image-2.5-sunburst`、`gpt-image-2.6-flare`、`gpt-image-2.6-sunburst`；仍可传入兼容网关支持的其他型号。
+
+`--quality` 支持 `auto` / `low` / `medium` / `high` / `xhigh` / `max`；GPT Image 2.6 可用 `--complexity low|medium|high`。PNG / JPEG / WebP 可用于 2.5 和 2.6；GIF / SVG 需选择 2.6，GIF 可设置 `--frame-count`、`--frame-duration-ms`，SVG 仅用于生图且每次请求一张。编辑时 `--markup` 可传透明 PNG 引导图，2.5 / 2.6 均可用，并且不能与 `--mask` 同时传。压缩参数只用于 JPEG / WebP。`--n` 返回的每张图片都会单独落盘。
 
 默认实现按 OpenAI 兼容接口工作，不写死任何第三方网关。
 
@@ -132,7 +138,7 @@ node skills/gpt-image-2/scripts/check-mode.js --json
 命名规则：
 
 - 提示词：`garden-gpt-image-2/prompt/<task-slug>-<timestamp>.md`
-- 图片：`garden-gpt-image-2/image/<task-slug>-<timestamp>.png`
+- 图片：`garden-gpt-image-2/image/<task-slug>-<timestamp>.<format>`（默认 `.png`；由输出格式决定扩展名）
 
 其中：
 

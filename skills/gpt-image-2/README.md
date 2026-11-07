@@ -1,6 +1,6 @@
-# GPT Image 2 Skill
+# GPT Image 2.5 / 2.6 Skill
 
-**A focused image-generation / editing skill for GPT Image 2, with a single SKILL definition that adapts to three runtime modes — local generation, host-native delegation, and pure prompt advisor.**
+**A focused image-generation / editing skill for GPT Image 2.5 / 2.6, with a single SKILL definition that adapts to three runtime modes — local generation, host-native delegation, and pure prompt advisor.**
 
 [中文文档](./README.zh-CN.md) · [Back to collection root](../../README.md)
 
@@ -10,7 +10,7 @@
 
 ## What it does
 
-This skill is a structured prompt-engineering and image-generation pack built around the GPT Image 2 model (and OpenAI-compatible image endpoints). It only does two image tasks — `POST /images/generations` and `POST /images/edits` — but it does them in three different runtime environments without changing user-facing behavior.
+This skill is a structured prompt-engineering and image-generation pack built around GPT Image 2.5 / 2.6 models (and OpenAI-compatible image endpoints). It only does two image tasks — `POST /images/generations` and `POST /images/edits` — but it does them in three different runtime environments without changing user-facing behavior.
 
 It bundles:
 
@@ -218,7 +218,13 @@ Read in this order: CLI args → `process.env` → `<cwd>/.env` → `<cwd>/.gate
 | `ENABLE_GARDEN_IMAGEGEN` | Mode A | Master switch for Mode A (`1` / `true` / `yes` / `on`) |
 | `OPENAI_API_KEY` | Mode A | Required for actual image API calls |
 | `OPENAI_BASE_URL` | optional | Default `https://api.openai.com/v1`; can point to any OpenAI-compatible gateway |
-| `OPENAI_IMAGE_MODEL` | optional | Default `gpt-image-2`; can be swapped for `gpt-image-1` / `dall-e-3` / etc. |
+| `OPENAI_IMAGE_GENERATION_MODEL` | optional | Generation default: `gpt-image-2.5-flare` |
+| `OPENAI_IMAGE_EDIT_MODEL` | optional | Editing default: `gpt-image-2.5-sunburst` |
+| `OPENAI_IMAGE_MODEL` | optional | Backward-compatible shared override; operation-specific variables take precedence |
+
+Model precedence is `--model` → operation-specific variable → `OPENAI_IMAGE_MODEL` → operation default. Built-in model choices are `gpt-image-2.5-flare`, `gpt-image-2.5-sunburst`, `gpt-image-2.6-flare`, and `gpt-image-2.6-sunburst`; other gateway model IDs remain accepted.
+
+Mode A accepts `--quality auto|low|medium|high|xhigh|max`. GPT Image 2.6 also accepts `--complexity low|medium|high` and GIF / SVG output; GIF accepts `--frame-count` and `--frame-duration-ms`, while SVG is generation-only and requires `--n 1`. PNG / JPEG / WebP remain available with 2.5 and 2.6. Edit requests on both versions accept `--markup` with a transparent PNG guidance overlay; do not combine it with `--mask`. Compression is limited to JPEG / WebP. Every returned image is saved, with numbered filenames when a request returns multiple images.
 
 The skill is wire-compatible with the OpenAI image API and is **not** hard-coded to any third-party gateway.
 
@@ -231,7 +237,7 @@ Unless the user specifies otherwise:
 | What | Where | Used in |
 |---|---|---|
 | Rendered prompts | `garden-gpt-image-2/prompt/<task-slug>-<timestamp>.md` | A / B / C |
-| Generated images | `garden-gpt-image-2/image/<task-slug>-<timestamp>.png` | A only (B = host decides, C = none) |
+| Generated images | `garden-gpt-image-2/image/<task-slug>-<timestamp>.<format>` (PNG by default) | A only (B = host decides, C = none) |
 
 `<task-slug>` is auto-derived from the user's request; `<timestamp>` is `YYYYMMDD-HHMMSS`.
 

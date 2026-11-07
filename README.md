@@ -190,7 +190,7 @@ Links: [README](./skills/web-design-engineer/README.md) · [SKILL.md](./skills/w
 **Category:** Image Generation / Prompt Engineering  
 **Best for:** posters, UI mockups, product visuals, infographics, academic figures, technical diagrams, comics, avatars, storyboards, branding boards, and image-editing workflows.
 
-`gpt-image-2` is a focused image-generation skill for GPT Image 2 and OpenAI-compatible image APIs. It is designed to work across different agent environments: fully local Garden generation, host-native image-tool delegation, or prompt-only advisor mode when no image tool is available.
+`gpt-image-2` is a focused image-generation skill for GPT Image 2.5 / 2.6 and OpenAI-compatible image APIs. It is designed to work across different agent environments: fully local Garden generation, host-native image-tool delegation, or prompt-only advisor mode when no image tool is available.
 
 Highlights:
 

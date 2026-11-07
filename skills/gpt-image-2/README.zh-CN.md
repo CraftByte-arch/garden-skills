@@ -1,6 +1,6 @@
-# GPT Image 2 Skill
+# GPT Image 2.5 / 2.6 Skill
 
-**面向 GPT Image 2 的聚焦型图像生成 / 编辑技能。一份 SKILL 定义，自动适配三种运行环境——本地直接出图、宿主原生图像工具、纯提示词顾问。**
+**面向 GPT Image 2.5 / 2.6 的聚焦型图像生成 / 编辑技能。一份 SKILL 定义，自动适配三种运行环境——本地直接出图、宿主原生图像工具、纯提示词顾问。**
 
 [English](./README.md) · [返回集合首页](../../README.zh-CN.md)
 
@@ -218,7 +218,13 @@ skills/gpt-image-2/
 | `ENABLE_GARDEN_IMAGEGEN` | Mode A 必需 | 模式开关：`1` / `true` / `yes` / `on` 启用 Mode A |
 | `OPENAI_API_KEY` | Mode A 必需 | 真正调图像 API 用 |
 | `OPENAI_BASE_URL` | 可选 | 默认 `https://api.openai.com/v1`，可指向任意 OpenAI 兼容网关 |
-| `OPENAI_IMAGE_MODEL` | 可选 | 默认 `gpt-image-2`，也可换成 `gpt-image-1` / `dall-e-3` 等 |
+| `OPENAI_IMAGE_GENERATION_MODEL` | 可选 | 生图默认模型：`gpt-image-2.5-flare` |
+| `OPENAI_IMAGE_EDIT_MODEL` | 可选 | 编辑默认模型：`gpt-image-2.5-sunburst` |
+| `OPENAI_IMAGE_MODEL` | 可选 | 兼容旧配置的共享覆盖值；操作专用变量优先 |
+
+模型优先级：`--model` → 操作专用变量 → `OPENAI_IMAGE_MODEL` → 操作默认值。内置型号为 `gpt-image-2.5-flare`、`gpt-image-2.5-sunburst`、`gpt-image-2.6-flare`、`gpt-image-2.6-sunburst`；也可传入其他兼容网关型号。
+
+Mode A 支持 `--quality auto|low|medium|high|xhigh|max`。GPT Image 2.6 还支持 `--complexity low|medium|high` 以及 GIF / SVG 输出；GIF 可设置 `--frame-count`、`--frame-duration-ms`，SVG 仅用于生图且每次一张。2.5 / 2.6 均支持 PNG / JPEG / WebP。编辑时两代模型都可用 `--markup` 传透明 PNG 引导图，不能与 `--mask` 同时传。压缩参数仅用于 JPEG / WebP。一次返回多张图时会逐张保存并编号。
 
 默认实现严格按 OpenAI 兼容接口工作，**不绑定**任何第三方网关。
 
@@ -231,7 +237,7 @@ skills/gpt-image-2/
 | 内容 | 落盘位置 | 适用模式 |
 |---|---|---|
 | 渲染好的 prompt | `garden-gpt-image-2/prompt/<task-slug>-<timestamp>.md` | A / B / C |
-| 生成的图片 | `garden-gpt-image-2/image/<task-slug>-<timestamp>.png` | 仅 A（B 由宿主决定，C 不产出） |
+| 生成的图片 | `garden-gpt-image-2/image/<task-slug>-<timestamp>.<format>`（默认 PNG） | 仅 A（B 由宿主决定，C 不产出） |
 
 `<task-slug>` 由用户请求自动派生，`<timestamp>` 是 `YYYYMMDD-HHMMSS`。
 

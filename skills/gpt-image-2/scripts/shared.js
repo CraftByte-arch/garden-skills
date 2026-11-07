@@ -5,7 +5,121 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 export const DEFAULT_IMAGE_DIR = "garden-gpt-image-2/image";
 export const DEFAULT_PROMPT_DIR = "garden-gpt-image-2/prompt";
-export const DEFAULT_MODEL = "gpt-image-2";
+export const DEFAULT_GENERATION_MODEL = "gpt-image-2.5-flare";
+export const DEFAULT_EDIT_MODEL = "gpt-image-2.5-sunburst";
+// Backward-compatible alias for callers that still import DEFAULT_MODEL.
+export const DEFAULT_MODEL = DEFAULT_GENERATION_MODEL;
+export const SUPPORTED_IMAGE_MODELS = [
+  DEFAULT_GENERATION_MODEL,
+  DEFAULT_EDIT_MODEL,
+  "gpt-image-2.6-flare",
+  "gpt-image-2.6-sunburst",
+];
+export const SUPPORTED_QUALITY_LEVELS = ["auto", "low", "medium", "high", "xhigh", "max"];
+export const SUPPORTED_COMPLEXITY_LEVELS = ["low", "medium", "high"];
+export const SUPPORTED_OUTPUT_FORMATS = ["png", "jpeg", "webp", "gif", "svg"];
+
+const FORMAT_EXTENSIONS = {
+  png: ".png",
+  jpeg: ".jpg",
+  webp: ".webp",
+  gif: ".gif",
+  svg: ".svg",
+};
+const EXTENSION_FORMATS = {
+  ".png": "png",
+  ".jpg": "jpeg",
+  ".jpeg": "jpeg",
+  ".webp": "webp",
+  ".gif": "gif",
+  ".svg": "svg",
+};
+
+export function resolveImageModel(kind, cliModel) {
+  if (cliModel) return cliModel;
+  const operationModel =
+    kind === "edit"
+      ? process.env.OPENAI_IMAGE_EDIT_MODEL
+      : process.env.OPENAI_IMAGE_GENERATION_MODEL;
+  return (
+    operationModel ||
+    process.env.OPENAI_IMAGE_MODEL ||
+    (kind === "edit" ? DEFAULT_EDIT_MODEL : DEFAULT_GENERATION_MODEL)
+  );
+}
+
+export function resolveOutputFormat(configuredFormat, rawOutputPath) {
+  const outputExtension = path.extname(String(rawOutputPath || "")).toLowerCase();
+  const pathFormat = outputExtension ? EXTENSION_FORMATS[outputExtension] : null;
+  if (outputExtension && !pathFormat) {
+    throw new Error(`Unsupported output file extension: ${outputExtension}`);
+  }
+
+  const format = String(configuredFormat || pathFormat || "png").toLowerCase();
+  if (!SUPPORTED_OUTPUT_FORMATS.includes(format)) {
+    throw new Error(`Unsupported output format: ${format}. Supported: ${SUPPORTED_OUTPUT_FORMATS.join(", ")}`);
+  }
+  if (configuredFormat && pathFormat && format !== pathFormat) {
+    throw new Error(`--output-format ${format} conflicts with output path extension ${outputExtension}`);
+  }
+
+  return {
+    format,
+    shouldSend: Boolean(configuredFormat || (pathFormat && pathFormat !== "png")),
+  };
+}
+
+export function extensionForFormat(format) {
+  const extension = FORMAT_EXTENSIONS[String(format || "png").toLowerCase()];
+  if (!extension) throw new Error(`Unsupported output format: ${format}`);
+  return extension;
+}
+
+export function validateImageOutputOptions({ format, n = 1, compression, frameCount, frameDurationMs }) {
+  if (!SUPPORTED_OUTPUT_FORMATS.includes(format)) {
+    throw new Error(`Unsupported output format: ${format}. Supported: ${SUPPORTED_OUTPUT_FORMATS.join(", ")}`);
+  }
+  if (compression !== null && compression !== undefined && !["jpeg", "webp"].includes(format)) {
+    throw new Error("--output-compression is only valid with jpeg or webp output.");
+  }
+  if (compression !== null && compression !== undefined) {
+    const value = Number(compression);
+    if (!Number.isInteger(value) || value < 0 || value > 100) {
+      throw new Error("--output-compression must be an integer from 0 to 100.");
+    }
+  }
+  if (format !== "gif" && ((frameCount !== null && frameCount !== undefined) || (frameDurationMs !== null && frameDurationMs !== undefined))) {
+    throw new Error("--frame-count and --frame-duration-ms require --output-format gif.");
+  }
+  if (frameCount !== null && frameCount !== undefined) {
+    const value = Number(frameCount);
+    if (!Number.isInteger(value) || value < 2 || value > 16) {
+      throw new Error("--frame-count must be an integer from 2 to 16.");
+    }
+  }
+  if (frameDurationMs !== null && frameDurationMs !== undefined) {
+    const value = Number(frameDurationMs);
+    if (!Number.isInteger(value) || value < 20 || value > 2000) {
+      throw new Error("--frame-duration-ms must be an integer from 20 to 2000; the API rounds to 10 ms.");
+    }
+  }
+  if (format === "svg" && Number(n) > 1) {
+    throw new Error("SVG output supports one image per request; set --n 1.");
+  }
+}
+
+export function validateModelSpecificOptions({ model, format, complexity }) {
+  const isGptImage2Family = /^gpt-image-2(?:[.-]|$)/.test(String(model || ""));
+  const isGptImage26 = /^gpt-image-2\.6(?:-|$)/.test(String(model || ""));
+  if (isGptImage2Family && !isGptImage26) {
+    if (complexity) {
+      throw new Error("--complexity requires GPT Image 2.6; select gpt-image-2.6-flare or gpt-image-2.6-sunburst.");
+    }
+    if (format === "gif" || format === "svg") {
+      throw new Error(`--output-format ${format} requires GPT Image 2.6; select gpt-image-2.6-flare or gpt-image-2.6-sunburst.`);
+    }
+  }
+}
 
 export async function readEnvFile(filePath) {
   try {
@@ -88,10 +202,20 @@ export function buildDefaultPromptPath(hint) {
   return path.join(DEFAULT_PROMPT_DIR, `${slug}-${stamp}.md`);
 }
 
-export function resolveOutput(raw, fallbackPath) {
+export function resolveOutput(raw, fallbackPath, outputFormat = "png") {
   const target = raw || fallbackPath;
   const full = path.resolve(target);
-  return path.extname(full) ? full : `${full}.png`;
+  return path.extname(full) ? full : `${full}${extensionForFormat(outputFormat)}`;
+}
+
+export function resolveOutputPaths(raw, fallbackPath, outputFormat, count) {
+  const firstPath = resolveOutput(raw, fallbackPath, outputFormat);
+  const total = Math.max(1, Number(count) || 1);
+  if (total === 1) return [firstPath];
+
+  const extension = path.extname(firstPath);
+  const stem = firstPath.slice(0, -extension.length);
+  return Array.from({ length: total }, (_, index) => `${stem}-${index + 1}${extension}`);
 }
 
 export async function savePrompt(promptText, rawPath, hint) {
@@ -106,6 +230,7 @@ export function mimeFor(filePath) {
   if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
   if (ext === ".webp") return "image/webp";
   if (ext === ".gif") return "image/gif";
+  if (ext === ".svg") return "image/svg+xml";
   return "image/png";
 }
 
@@ -190,12 +315,20 @@ export async function fetchBytesFromUrl(url) {
   return Buffer.from(await res.arrayBuffer());
 }
 
+export async function extractGeneratedImages(json) {
+  const items = json?.data;
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new Error("API response did not include any generated images in data[].");
+  }
+  return Promise.all(items.map(async (item, index) => {
+    if (item?.b64_json) return Buffer.from(item.b64_json, "base64");
+    if (item?.url) return fetchBytesFromUrl(item.url);
+    throw new Error(`API response data[${index}] did not include b64_json or url.`);
+  }));
+}
+
 export async function extractGeneratedBytes(json) {
-  const first = json?.data?.[0];
-  if (!first) throw new Error("API response did not include data[0].");
-  if (first.b64_json) return Buffer.from(first.b64_json, "base64");
-  if (first.url) return fetchBytesFromUrl(first.url);
-  throw new Error("API response did not include b64_json or url.");
+  return (await extractGeneratedImages(json))[0];
 }
 
 export async function saveImage(outputPath, bytes) {

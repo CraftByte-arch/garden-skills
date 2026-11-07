@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import process from "node:process";
-import { loadAmbientEnv, DEFAULT_MODEL } from "./shared.js";
+import { loadAmbientEnv, resolveImageModel } from "./shared.js";
 
 await loadAmbientEnv();
 
@@ -11,7 +11,8 @@ const gardenEnabled = TRUTHY.has(rawFlag);
 
 const apiKey = process.env.OPENAI_API_KEY || "";
 const baseUrl = process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
-const model = process.env.OPENAI_IMAGE_MODEL || DEFAULT_MODEL;
+const generationModel = resolveImageModel("generate");
+const editModel = resolveImageModel("edit");
 
 let recommendation;
 let mode;
@@ -40,7 +41,9 @@ const result = {
   garden_mode_enabled: gardenEnabled,
   has_api_key: Boolean(apiKey),
   base_url: baseUrl,
-  model,
+  model: generationModel,
+  generation_model: generationModel,
+  edit_model: editModel,
   env_flag_value: rawFlag || "(unset)",
   summary,
 };
@@ -57,7 +60,8 @@ if (wantJson) {
   console.log(`${pad("garden_mode_enabled")}: ${result.garden_mode_enabled}`);
   console.log(`${pad("has_api_key")}: ${result.has_api_key}`);
   console.log(`${pad("base_url")}: ${result.base_url}`);
-  console.log(`${pad("model")}: ${result.model}`);
+  console.log(`${pad("generation_model")}: ${result.generation_model}`);
+  console.log(`${pad("edit_model")}: ${result.edit_model}`);
   console.log(`${pad("env_flag_value")}: ${result.env_flag_value}`);
   console.log("");
   console.log(result.summary);
